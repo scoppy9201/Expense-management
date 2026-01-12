@@ -2226,12 +2226,15 @@ const CATEGORY_ICONS = [
     { file: 'other.png', name: 'Khác', tags: 'khac other misc' }
 ];
 
+// Biến oàn cục
 let searchTimeout;
 let tempSelectedIcon = null;
 let editTempSelectedIcon = null;
 
+// Lấy tên icon từ file 
 const getIconName = file => CATEGORY_ICONS.find(i => i.file === file)?.name || 'Tiền mặt';
 
+// Đóng modal (hàm dùng chung) 
 const closeModal = modalId => document.getElementById(modalId)?.classList.remove('active');
 
 setTimeout(() => {
@@ -2270,6 +2273,7 @@ if (searchInput && tableRows.length > 0) {
     });
 }
 
+// Hiển thị không có kết quả 
 function showNoResultMessage(count) {
     const tbody = document.querySelector('tbody');
     let noResultRow = tbody.querySelector('.no-result-row');

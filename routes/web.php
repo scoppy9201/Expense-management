@@ -7,6 +7,9 @@ use App\Http\Controllers\ForgotPasswordController;
 use App\Http\Controllers\ChangePasswordController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\CategoryController;
+use App\Http\Controllers\TransactionController;
+use App\Http\Controllers\WalletController;
+use App\Http\Controllers\DashboardController;
 
 // Trang chủ (chưa đăng nhập)
 Route::get('/', function () {
@@ -33,13 +36,11 @@ Route::middleware('guest')->group(function () {
     Route::post('/reset-password', [ForgotPasswordController::class, 'resetPassword'])->name('password.update');
 });
 
-// Authenticated routes - 
+// Authenticated routes
 Route::middleware('auth')->group(function () {
 
     // Dashboard 
-    Route::get('/dashboard', function () {
-        return view('dashboard');
-    })->name('dashboard');
+    Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
     // Profile
     Route::get('/profile', [ProfileController::class, 'show'])->name('profile.show');
@@ -55,9 +56,15 @@ Route::middleware('auth')->group(function () {
     Route::resource('categories', CategoryController::class)->parameters(['categories' => 'category']);
     Route::post('/categories/{category}/toggle-status', [CategoryController::class, 'toggleStatus'])->name('categories.toggle-status');
 
+    // Quản lý ngân sách
+    Route::resource('wallets', WalletController::class)->parameters(['wallets' => 'wallet']);
+    Route::post('/wallets/{wallet}/toggle-status', [WalletController::class, 'toggleStatus'])->name('wallets.toggle-status');
+
+    // Quản lý giao dịch
+    Route::resource('transactions', TransactionController::class)->parameters(['transactions' => 'transaction']);
+
     // Logout
     Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
 });
 
-// Redirect cũ (giữ lại cho an toàn)
 Route::redirect('/home', '/dashboard')->middleware('auth');

@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>@yield('title', 'Monexa') - Quản lý chi tiêu</title>
+    <link rel="icon" type="images/png" href="{{ asset('favicon.png') }}">
     <style>
         /* Giá trị biến toàn cục */
         :root {
@@ -518,10 +519,6 @@
             filter: opacity(1);
         }
 
-        .nav-link.active .nav-icon img {
-            filter: brightness(0) invert(1);
-        }
-
         .nav-text {
             position: absolute;
             left: 70px;
@@ -877,17 +874,17 @@
                 </a>
             </li>
             <li class="nav-item">
-                <a href="#" class="nav-link">
+                <a href="{{ route('transactions.index') }}" class="nav-link {{ request()->routeIs('transactions.*') ? 'active' : '' }}">
                     <span class="nav-icon">
-                        <img src="/images/transaction.png" alt="Transaction">
+                        <img src="{{ asset('images/transaction.png') }}" alt="Transaction">
                     </span>
                     <span class="nav-text">Giao dịch</span>
                 </a>
             </li>
             <li class="nav-item">
-                <a href="#" class="nav-link">
+                <a href="{{ route('wallets.index') }}" class="nav-link {{ request()->routeIs('wallets.*') ? 'active' : '' }}">
                     <span class="nav-icon">
-                        <img src="/images/wallet.png" alt="Budget">
+                        <img src="{{ asset('images/wallet.png') }}" alt="Budget">
                     </span>
                     <span class="nav-text">Ngân sách</span>
                 </a>

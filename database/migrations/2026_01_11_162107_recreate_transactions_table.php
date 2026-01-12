@@ -6,9 +6,12 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    // bảng giao dịch người dùng
     public function up(): void
     {
+        // Xóa bảng cũ nếu tồn tại
+        Schema::dropIfExists('transactions');
+        
+        // Tạo lại với đầy đủ cột
         Schema::create('transactions', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('user_id');
@@ -20,6 +23,7 @@ return new class extends Migration
             $table->text('ghi_chu')->nullable();
             $table->timestamps();
 
+            // Foreign keys
             $table->foreign('user_id')
                   ->references('id')->on('users')
                   ->onDelete('CASCADE');
@@ -32,7 +36,8 @@ return new class extends Migration
                   ->references('id')->on('wallets')
                   ->onDelete('CASCADE');
 
-            $table->index(['user_id', 'ngay_giao_dich'], 'idx_user_date');
+            // Indexes
+            $table->index(['user_id', 'ngay_giao_dich']);
             $table->index('loai_giao_dich');
         });
     }
@@ -42,4 +47,3 @@ return new class extends Migration
         Schema::dropIfExists('transactions');
     }
 };
-

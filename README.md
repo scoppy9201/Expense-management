@@ -1,59 +1,222 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
-
 <p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
+  <img src="screenshots/logo.png" width="200" alt="Monexa Logo">
 </p>
 
-## About Laravel
+<p align="center">
+  <strong>Ứng dụng Quản lý Chi tiêu Cá nhân</strong>
+</p>
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+<p align="center">
+<a href="https://laravel.com"><img src="https://img.shields.io/badge/Laravel-12.x-FF2D20?style=flat&logo=laravel" alt="Laravel Version"></a>
+<a href="https://php.net"><img src="https://img.shields.io/badge/PHP-8.3-777BB4?style=flat&logo=php" alt="PHP Version"></a>
+<a href="https://github.com/yourusername/monexa"><img src="https://img.shields.io/github/license/yourusername/monexa" alt="License"></a>
+<a href="https://github.com/yourusername/monexa/stargazers"><img src="https://img.shields.io/github/stars/yourusername/monexa" alt="Stars"></a>
+</p>
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## Về Monexa
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+Monexa là ứng dụng web quản lý chi tiêu cá nhân được xây dựng trên nền tảng Laravel. Chúng tôi tin rằng việc quản lý tài chính cá nhân nên đơn giản, trực quan và hiệu quả. Monexa giúp bạn theo dõi thu chi, quản lý ngân sách và phân tích tài chính một cách dễ dàng với các tính năng:
 
-## Learning Laravel
+- **Dashboard trực quan** với biểu đồ thời gian thực.
+- **Quản lý giao dịch** thu/chi với bộ lọc mạnh mẽ.
+- **Quản lý ngân sách** thông minh với cảnh báo vượt mức.
+- **Phân loại danh mục** tùy chỉnh với biểu tượng.
+- **Xác thực đa dạng** bao gồm Google OAuth.
+- **Giao diện responsive** hoạt động mượt mà trên mọi thiết bị.
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework. You can also check out [Laravel Learn](https://laravel.com/learn), where you will be guided through building a modern Laravel application.
+Monexa được thiết kế để mang lại trải nghiệm quản lý tài chính tốt nhất cho người dùng cá nhân.
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+## Học Laravel
 
-## Laravel Sponsors
+Laravel có [tài liệu](https://laravel.com/docs) và thư viện video hướng dẫn rộng lớn nhất trong tất cả các framework hiện đại, giúp bạn dễ dàng bắt đầu. Bạn cũng có thể xem [Laravel Learn](https://laravel.com/learn), nơi bạn sẽ được hướng dẫn xây dựng ứng dụng Laravel hiện đại.
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+Nếu không muốn đọc, [Laracasts](https://laracasts.com) có thể giúp bạn. Laracasts chứa hàng nghìn video hướng dẫn về Laravel, PHP hiện đại, unit testing và JavaScript.
 
-### Premium Partners
+## Cài đặt
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+### Yêu cầu hệ thống
 
-## Contributing
+- PHP >= 8.2
+- Composer
+- MySQL hoặc MariaDB
+- Node.js & NPM
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+### Các bước cài đặt
 
-## Code of Conduct
+Clone repository và cài đặt dependencies:
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+```bash
+git clone https://github.com/scoppy9201/monexa.git
+cd monexa
+composer install
+npm install
+```
 
-## Security Vulnerabilities
+Tạo file môi trường và generate application key:
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+```bash
+cp .env.example .env
+php artisan key:generate
+```
 
-## License
+Cấu hình database trong file `.env`:
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+```env
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=monexa
+DB_USERNAME=root
+DB_PASSWORD=
+```
+
+Chạy migrations và seeders:
+
+```bash
+php artisan migrate
+php artisan db:seed
+```
+
+Tạo symbolic link cho storage:
+
+```bash
+php artisan storage:link
+```
+
+Khởi động development server:
+
+```bash
+php artisan serve
+```
+
+Ứng dụng sẽ chạy tại `http://localhost:8000`
+
+## Cấu hình Google OAuth (Tùy chọn)
+
+Để sử dụng tính năng đăng nhập Google, cập nhật thông tin trong `.env`:
+
+```env
+GOOGLE_CLIENT_ID=your_google_client_id
+GOOGLE_CLIENT_SECRET=your_google_client_secret
+GOOGLE_REDIRECT_URI=http://localhost:8000/auth/google/callback
+```
+
+## Giao diện
+
+<p align="center">
+  <img src="screenshots/dashboard.png" width="800" alt="Dashboard">
+  <br>
+  <em>Dashboard với thống kê và biểu đồ tổng quan</em>
+</p>
+
+<p align="center">
+  <img src="screenshots/transactions.png" width="800" alt="Transactions">
+  <br>
+  <em>Quản lý giao dịch với bộ lọc nâng cao</em>
+</p>
+
+<p align="center">
+  <img src="screenshots/wallets.png" width="800" alt="Wallets">
+  <br>
+  <em>Theo dõi ngân sách và tiến độ chi tiêu</em>
+</p>
+
+<p align="center">
+  <img src="screenshots/categories.png" width="800" alt="Categories">
+  <br>
+  <em>Quản lý danh mục thu chi</em>
+</p>
+
+## Tính năng chính
+
+### 🔐 Xác thực & Bảo mật
+- Đăng ký/Đăng nhập với validation
+- Đăng nhập qua Google OAuth
+- Quản lý profile và đổi mật khẩu
+- Bảo mật với middleware
+
+### 💸 Quản lý giao dịch
+- CRUD giao dịch thu/chi đầy đủ
+- Phân loại theo danh mục
+- Lọc theo nhiều tiêu chí
+- Phân trang và sắp xếp
+- Tích hợp với ngân sách
+
+### 💰 Quản lý ngân sách
+- Tạo ngân sách cho từng danh mục
+- Cập nhật số dư tự động
+- Cảnh báo khi sắp vượt mức
+- Progress bar trực quan
+
+### 📊 Dashboard & Báo cáo
+- Thống kê tổng quan
+- Line Chart thu chi theo tháng
+- Pie Chart phân bổ chi tiêu
+- Top danh mục chi tiêu
+- Giao dịch gần đây
+
+### 🏷️ Quản lý danh mục
+- Tạo danh mục thu/chi
+- Chọn icon tùy chỉnh
+- Kích hoạt/Vô hiệu hóa
+
+## Cấu trúc Database
+
+Monexa sử dụng 4 bảng chính:
+
+- **users** - Thông tin người dùng
+- **categories** - Danh mục thu chi
+- **wallets** - Ngân sách
+- **transactions** - Giao dịch
+
+Chi tiết schema có thể xem trong `database/migrations/`
+
+## Công nghệ sử dụng
+
+Monexa được xây dựng với:
+
+- **[Laravel 12.x](https://laravel.com)** - PHP Framework mạnh mẽ
+- **[Chart.js](https://www.chartjs.org/)** - Biểu đồ JavaScript
+- **[Laravel Socialite](https://github.com/laravel/socialite)** - OAuth authentication
+- **[MySQL](https://www.mysql.com/)** - Hệ quản trị cơ sở dữ liệu
+
+## Đóng góp
+
+Cảm ơn bạn đã quan tâm đến việc đóng góp cho Monexa! Để đóng góp:
+
+1. Fork repository này
+2. Tạo branch mới (`git checkout -b feature/AmazingFeature`)
+3. Commit changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to branch (`git push origin feature/AmazingFeature`)
+5. Mở Pull Request
+
+## Quy tắc ứng xử
+
+Để đảm bảo cộng đồng Monexa thân thiện với tất cả mọi người, vui lòng xem xét và tuân thủ [Quy tắc ứng xử](CODE_OF_CONDUCT.md).
+
+## Lỗ hổng bảo mật
+
+Nếu bạn phát hiện lỗ hổng bảo mật trong Monexa, vui lòng gửi email đến [security@monexa.com](mailto:security@monexa.com). Tất cả các lỗ hổng bảo mật sẽ được xử lý kịp thời.
+
+## Tác giả
+
+**Hung Manh**
+
+- GitHub: [@Manhung](https://github.com/scoppy9201)
+- Email: Buimanhhung3105@gmail.com
+
+## Giấy phép
+
+Monexa là phần mềm mã nguồn mở được cấp phép theo [Giấy phép MIT](https://opensource.org/licenses/MIT).
+
+---
+
+<p align="center">
+  Made with ❤️ by Hung Manh
+</p>
+
+<p align="center">
+  <a href="https://github.com/yourusername/monexa/stargazers">⭐ Star</a> •
+  <a href="https://github.com/yourusername/monexa/issues">🐛 Report Bug</a> •
+  <a href="https://github.com/yourusername/monexa/issues">✨ Request Feature</a>
+</p>

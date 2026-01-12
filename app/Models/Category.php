@@ -10,6 +10,7 @@ class Category extends Model
     use HasFactory;
 
     protected $fillable = [
+        'user_id',
         'ten_danh_muc',
         'loai_danh_muc',
         'danh_muc_cha_id',
@@ -18,31 +19,61 @@ class Category extends Model
         'trang_thai'
     ];
 
-    // Relationship với danh mục cha
+    protected $casts = [
+        'trang_thai' => 'boolean',
+    ];
+
+    /**
+     * Relationship: Category thuộc về một user
+     */
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
+
+    /**
+     * Relationship: Danh mục cha
+     */
     public function parent()
     {
         return $this->belongsTo(Category::class, 'danh_muc_cha_id');
     }
 
-    // Relationship với danh mục con
+    /**
+     * Relationship: Danh mục con
+     */
     public function children()
     {
         return $this->hasMany(Category::class, 'danh_muc_cha_id');
     }
 
-    // Relationship với giao dịch
+    /**
+     * Relationship: Giao dịch thuộc danh mục này
+     */
     public function transactions()
     {
         return $this->hasMany(Transaction::class, 'category_id');
     }
 
-    // Kiểm tra danh mục có thể xóa không
-    public function canDelete()
+    /**
+     * Relationship: Ngân sách cho danh mục này
+     */
+    public function wallets()
     {
-        return $this->transactions()->count() === 0;
+        return $this->hasMany(Wallet::class, 'category_id');
     }
 
-    // Scope filter theo loại
+    /**
+     * Kiểm tra danh mục có thể xóa không
+     */
+    public function canDelete()
+    {
+        return $this->transactions()->count() === 0 && $this->wallets()->count() === 0;
+    }
+
+    /**
+     * Scope: Filter theo loại (THU/CHI)
+     */
     public function scopeLoai($query, $loai)
     {
         if ($loai && in_array($loai, ['THU', 'CHI'])) {
@@ -51,7 +82,9 @@ class Category extends Model
         return $query;
     }
 
-    // Scope tìm kiếm theo tên
+    /**
+     * Scope: Tìm kiếm theo tên
+     */
     public function scopeSearch($query, $keyword)
     {
         if ($keyword) {
@@ -60,12 +93,30 @@ class Category extends Model
         return $query;
     }
 
-    // Scope lọc theo trạng thái
+    /**
+     * Scope: Lọc theo trạng thái
+     */
     public function scopeTrangThai($query, $status)
     {
         if ($status !== null && $status !== '') {
             return $query->where('trang_thai', $status);
         }
         return $query;
+    }
+
+    /**
+     * Accessor: Tổng ngân sách đã đặt cho danh mục này
+     */
+    public function getTotalBudgetAttribute()
+    {
+        return $this->wallets()->sum('ngan_sach_goc');
+    }
+
+    /**
+     * Accessor: Tổng số dư còn lại của danh mục này
+     */
+    public function getTotalBalanceAttribute()
+    {
+        return $this->wallets()->sum('so_du');
     }
 }
