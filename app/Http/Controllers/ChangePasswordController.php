@@ -45,13 +45,11 @@ class ChangePasswordController extends Controller
             ])->withInput();
         }
 
-        // Cập nhật mật khẩu mới
-        User::where('id', Auth::id())->update([
-            'password' => Hash::make($request->password)
-        ]);
+        // Đăng xuất các session khác trước khi đổi mật khẩu => sử dung mật khẩu hiện tại 
+        Auth::logoutOtherDevices($request->current_password);
 
-        // Đăng xuất tất cả các session khác
-        Auth::logoutOtherDevices($request->password);
+        // Cập nhật mật khẩu mới
+        User::where('id', Auth::id())->update(['password' => Hash::make($request->password)]);
 
         return redirect()->route('change-password.form')
             ->with('success', 'Đổi mật khẩu thành công!');
