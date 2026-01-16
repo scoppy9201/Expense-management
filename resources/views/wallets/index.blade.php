@@ -1417,55 +1417,172 @@
 <script>
 const closeModal = modalId => document.getElementById(modalId)?.classList.remove('active');
 
-// Auto hide alerts
-setTimeout(() => {
-    document.querySelectorAll('.alert').forEach(alert => {
-        alert.style.opacity = '0';
-        alert.style.transform = 'translateY(-10px)';
-        setTimeout(() => alert.remove(), 300);
+const showError = (input, message) => {
+    clearError(input);
+    const errorDiv = document.createElement('div');
+    errorDiv.className = 'input-error';
+    errorDiv.style.cssText = 'color: #dc2626; font-size: 12px; margin-top: 6px; display: flex; align-items: center; gap: 6px;';
+    errorDiv.innerHTML = `
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="8" x2="12" y2="12"></line>
+            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+        </svg>
+        <span>${message}</span>
+    `;
+    input.style.borderColor = '#dc2626';
+    input.parentElement.appendChild(errorDiv);
+};
+
+const clearError = input => {
+    input.parentElement.querySelector('.input-error')?.remove();
+    input.style.borderColor = '';
+};
+
+const formatCurrencyOnBlur = input => {
+    let value = input.value.replace(/\D/g, '');
+    const num = parseInt(value) || 0;
+    
+    if (num > 100000000) {
+        value = '100000000';
+        showError(input, 'Số tiền không được vượt quá 100,000,000 VNĐ');
+    } else if (num > 0 && num < 1000) {
+        showError(input, 'Số tiền phải từ 1,000 VNĐ trở lên');
+    } else {
+        clearError(input);
+    }
+    
+    input.value = value ? parseInt(value).toLocaleString('vi-VN') : '';
+    
+    const hiddenInput = input.parentElement.querySelector('.real-value');
+    if (hiddenInput) hiddenInput.value = value;
+};
+
+const removeFormatOnFocus = input => {
+    const value = input.value.replace(/\D/g, '');
+    input.value = value;
+    clearError(input);
+};
+
+const validateBudgetForm = form => {
+    const budgetInput = form.querySelector('[name="ngan_sach_goc"]');
+    const displayInput = budgetInput.previousElementSibling;
+    const value = budgetInput.value.replace(/\D/g, '');
+    
+    if (!value) {
+        showError(displayInput, 'Vui lòng nhập hạn mức ngân sách');
+        displayInput.focus();
+        return false;
+    }
+    
+    const num = parseInt(value);
+    if (num < 1000) {
+        showError(displayInput, 'Số tiền phải từ 1,000 VNĐ trở lên');
+        displayInput.focus();
+        return false;
+    }
+    if (num > 100000000) {
+        showError(displayInput, 'Số tiền không được vượt quá 100,000,000 VNĐ');
+        displayInput.focus();
+        return false;
+    }
+    
+    budgetInput.value = value;
+    return true;
+};
+
+const setupCurrencyInput = input => {
+    const wrapper = document.createElement('div');
+    wrapper.style.position = 'relative';
+    
+    const displayInput = document.createElement('input');
+    displayInput.type = 'text';
+    displayInput.className = input.className;
+    displayInput.placeholder = 'Ví dụ: 10,000,000';
+    displayInput.value = input.value ? parseInt(input.value).toLocaleString('vi-VN') : '';
+    
+    input.type = 'hidden';
+    input.className = 'real-value';
+    
+    // Xóa format khi focus (để nhập dễ hơn)
+    displayInput.addEventListener('focus', () => removeFormatOnFocus(displayInput));
+    
+    // Format lại khi blur
+    displayInput.addEventListener('blur', () => formatCurrencyOnBlur(displayInput));
+    
+    // Chỉ cho phép nhập số
+    displayInput.addEventListener('keypress', e => {
+        if (!/[0-9]/.test(e.key)) e.preventDefault();
     });
-}, 5000);
-
-// Open create modal
-document.getElementById('open-create-modal')?.addEventListener('click', () => {
-    document.getElementById('create-modal').classList.add('active');
-});
-
-// Close modal on overlay click
-document.querySelectorAll('.modal-overlay').forEach(overlay => {
-    overlay.addEventListener('click', function(e) {
-        if (e.target === this) this.classList.remove('active');
+    
+    // Paste event
+    displayInput.addEventListener('paste', e => {
+        e.preventDefault();
+        const pastedText = (e.clipboardData || window.clipboardData).getData('text');
+        const numbers = pastedText.replace(/\D/g, '');
+        if (numbers) displayInput.value = numbers;
     });
-});
+    
+    input.parentNode.insertBefore(wrapper, input);
+    wrapper.appendChild(displayInput);
+    wrapper.appendChild(input);
+};
 
-// Edit modal function
-function openEditModal(wallet) {
+const openEditModal = wallet => {
     const form = document.getElementById('edit-form');
     form.action = `/wallets/${wallet.id}`;
     
-    // Fill data
     document.getElementById('edit-ten').value = wallet.ten_ngan_sach;
     document.getElementById('edit-category').value = wallet.category_id;
-    document.getElementById('edit-budget').value = wallet.ngan_sach_goc;
     document.getElementById('edit-mota').value = wallet.mo_ta || '';
     
-    document.getElementById('edit-modal').classList.add('active');
-}
-
-// ESC key to close modals
-document.addEventListener('keydown', function(e) {
-    if (e.key === 'Escape') {
-        document.querySelectorAll('.modal-overlay').forEach(modal => {
-            if (modal.classList.contains('active')) {
-                modal.classList.remove('active');
-            }
-        });
+    const budgetInput = document.getElementById('edit-budget');
+    const displayInput = budgetInput.previousElementSibling;
+    if (displayInput) {
+        displayInput.value = parseInt(wallet.ngan_sach_goc).toLocaleString('vi-VN');
+        budgetInput.value = wallet.ngan_sach_goc;
     }
-});
+    
+    document.getElementById('edit-modal').classList.add('active');
+};
 
-// Show create modal if validation errors exist
-@if($errors->any() && !$errors->has('id'))
-    document.getElementById('create-modal')?.classList.add('active');
-@endif
+document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('input[name="ngan_sach_goc"]').forEach(setupCurrencyInput);
+    
+    document.getElementById('create-form')?.addEventListener('submit', e => {
+        if (!validateBudgetForm(e.target)) e.preventDefault();
+    });
+    document.getElementById('edit-form')?.addEventListener('submit', e => {
+        if (!validateBudgetForm(e.target)) e.preventDefault();
+    });
+    
+    document.getElementById('open-create-modal')?.addEventListener('click', () => {
+        document.getElementById('create-modal').classList.add('active');
+    });
+    
+    document.querySelectorAll('.modal-overlay').forEach(overlay => {
+        overlay.addEventListener('click', e => {
+            if (e.target === overlay) overlay.classList.remove('active');
+        });
+    });
+    
+    document.addEventListener('keydown', e => {
+        if (e.key === 'Escape') {
+            document.querySelectorAll('.modal-overlay.active').forEach(m => m.classList.remove('active'));
+        }
+    });
+    
+    setTimeout(() => {
+        document.querySelectorAll('.alert').forEach(alert => {
+            alert.style.opacity = '0';
+            alert.style.transform = 'translateY(-10px)';
+            setTimeout(() => alert.remove(), 300);
+        });
+    }, 5000);
+    
+    @if($errors->any() && !$errors->has('id'))
+        document.getElementById('create-modal')?.classList.add('active');
+    @endif
+});
 </script>
 @endsection

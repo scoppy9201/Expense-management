@@ -1287,34 +1287,114 @@
 </div>
 
 <script>
-// Đóng modal 
 const closeModal = modalId => document.getElementById(modalId)?.classList.remove('active');
 
-// Nhận data danh mục từ BE 
+const showError = (input, message) => {
+    clearError(input);
+    const errorDiv = document.createElement('div');
+    errorDiv.className = 'input-error';
+    errorDiv.style.cssText = 'color: #dc2626; font-size: 12px; margin-top: 6px; display: flex; align-items: center; gap: 6px;';
+    errorDiv.innerHTML = `
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="8" x2="12" y2="12"></line>
+            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+        </svg>
+        <span>${message}</span>
+    `;
+    input.style.borderColor = '#dc2626';
+    input.parentElement.appendChild(errorDiv);
+};
+
+const clearError = input => {
+    input.parentElement.querySelector('.input-error')?.remove();
+    input.style.borderColor = '';
+};
+
+const formatCurrencyOnBlur = input => {
+    let value = input.value.replace(/\D/g, '');
+    const num = parseInt(value) || 0;
+    
+    if (num > 100000000) {
+        value = '100000000';
+        showError(input, 'Số tiền không được vượt quá 100,000,000 VNĐ');
+    } else if (num > 0 && num < 1000) {
+        showError(input, 'Số tiền phải từ 1,000 VNĐ trở lên');
+    } else {
+        clearError(input);
+    }
+    
+    input.value = value ? parseInt(value).toLocaleString('vi-VN') : '';
+    
+    const hiddenInput = input.parentElement.querySelector('.real-value');
+    if (hiddenInput) hiddenInput.value = value;
+};
+
+const removeFormatOnFocus = input => {
+    const value = input.value.replace(/\D/g, '');
+    input.value = value;
+    clearError(input);
+};
+
+const validateTransactionForm = form => {
+    const amountInput = form.querySelector('[name="so_tien"]');
+    const displayInput = amountInput.previousElementSibling;
+    const value = amountInput.value.replace(/\D/g, '');
+    
+    if (!value) {
+        showError(displayInput, 'Vui lòng nhập số tiền');
+        displayInput.focus();
+        return false;
+    }
+    
+    const num = parseInt(value);
+    if (num < 1000) {
+        showError(displayInput, 'Số tiền phải từ 1,000 VNĐ trở lên');
+        displayInput.focus();
+        return false;
+    }
+    if (num > 100000000) {
+        showError(displayInput, 'Số tiền không được vượt quá 100,000,000 VNĐ');
+        displayInput.focus();
+        return false;
+    }
+    
+    amountInput.value = value;
+    return true;
+};
+
+const setupCurrencyInput = input => {
+    const wrapper = document.createElement('div');
+    wrapper.style.position = 'relative';
+    
+    const displayInput = document.createElement('input');
+    displayInput.type = 'text';
+    displayInput.className = input.className;
+    displayInput.placeholder = 'Ví dụ: 10,000,000';
+    displayInput.value = input.value ? parseInt(input.value).toLocaleString('vi-VN') : '';
+    
+    input.type = 'hidden';
+    input.className = 'real-value';
+    
+    displayInput.addEventListener('focus', () => removeFormatOnFocus(displayInput));
+    displayInput.addEventListener('blur', () => formatCurrencyOnBlur(displayInput));
+    displayInput.addEventListener('keypress', e => {
+        if (!/[0-9]/.test(e.key)) e.preventDefault();
+    });
+    displayInput.addEventListener('paste', e => {
+        e.preventDefault();
+        const pastedText = (e.clipboardData || window.clipboardData).getData('text');
+        const numbers = pastedText.replace(/\D/g, '');
+        if (numbers) displayInput.value = numbers;
+    });
+    
+    input.parentNode.insertBefore(wrapper, input);
+    wrapper.appendChild(displayInput);
+    wrapper.appendChild(input);
+};
+
 const categories = @json($categories);
 
-// Tự động ẩn thông báo 
-setTimeout(() => {
-    document.querySelectorAll('.alert').forEach(alert => {
-        alert.style.opacity = '0';
-        alert.style.transform = 'translateY(-10px)';
-        setTimeout(() => alert.remove(), 300);
-    });
-}, 5000);
-
-// Mở modal tạo giao dịch 
-document.getElementById('open-create-modal')?.addEventListener('click', () => {
-    document.getElementById('create-modal').classList.add('active');
-});
-
-// Đóng modal khi click vào overlay 
-document.querySelectorAll('.modal-overlay').forEach(overlay => {
-    overlay.addEventListener('click', function(e) {
-        if (e.target === this) this.classList.remove('active');
-    });
-});
-
-// Lọc danh mục theo loại giao dịch - cretae 
 function filterCategoriesByType() {
     const loaiGiaoDich = document.getElementById('loai-giao-dich').value;
     const categorySelect = document.getElementById('category-select');
@@ -1322,10 +1402,7 @@ function filterCategoriesByType() {
     categorySelect.innerHTML = '<option value="">-- Chọn danh mục --</option>';
     
     if (loaiGiaoDich) {
-        const filteredCategories = categories.filter(cat => {
-            // Filter based on loai_danh_muc in category
-            return cat.loai_danh_muc === loaiGiaoDich;
-        });
+        const filteredCategories = categories.filter(cat => cat.loai_danh_muc === loaiGiaoDich);
         
         filteredCategories.forEach(cat => {
             const option = document.createElement('option');
@@ -1336,7 +1413,6 @@ function filterCategoriesByType() {
     }
 }
 
-// Lọc danh mục theo loại giao dịch - edit 
 function filterEditCategoriesByType() {
     const loaiGiaoDich = document.getElementById('edit-loai-giao-dich').value;
     const categorySelect = document.getElementById('edit-category');
@@ -1345,33 +1421,34 @@ function filterEditCategoriesByType() {
     categorySelect.innerHTML = '<option value="">-- Chọn danh mục --</option>';
     
     if (loaiGiaoDich) {
-        const filteredCategories = categories.filter(cat => {
-            return cat.loai_danh_muc === loaiGiaoDich;
-        });
+        const filteredCategories = categories.filter(cat => cat.loai_danh_muc === loaiGiaoDich);
         
         filteredCategories.forEach(cat => {
             const option = document.createElement('option');
             option.value = cat.id;
             option.textContent = cat.ten_danh_muc;
-            if (cat.id == currentValue) {
-                option.selected = true;
-            }
+            if (cat.id == currentValue) option.selected = true;
             categorySelect.appendChild(option);
         });
     }
 }
 
-// Mở modal chỉnh sủa giao dịch 
 function openEditModal(transaction) {
     const form = document.getElementById('edit-form');
     form.action = `/transactions/${transaction.id}`;
     
-    // Fill form fields
     document.getElementById('edit-loai-giao-dich').value = transaction.loai_giao_dich;
     document.getElementById('edit-payment-method').value = transaction.phuong_thuc_thanh_toan;
-    document.getElementById('edit-amount').value = transaction.so_tien;
     document.getElementById('edit-date').value = transaction.ngay_giao_dich;
     document.getElementById('edit-desc').value = transaction.ghi_chu || '';
+    
+    // Setup amount with format
+    const amountInput = document.getElementById('edit-amount');
+    const displayInput = amountInput.previousElementSibling;
+    if (displayInput) {
+        displayInput.value = parseInt(transaction.so_tien).toLocaleString('vi-VN');
+        amountInput.value = transaction.so_tien;
+    }
     
     // Filter and set category
     filterEditCategoriesByType();
@@ -1382,16 +1459,48 @@ function openEditModal(transaction) {
     document.getElementById('edit-modal').classList.add('active');
 }
 
-// Tự động mở modal create nếu validation lỗi
-@if($errors->any() && !$errors->has('id'))
-    document.getElementById('create-modal')?.classList.add('active');
-@endif
-
-// Chặn nhập số âm
-document.querySelectorAll('input[type="number"]').forEach(input => {
-    input.addEventListener('input', function() {
-        if (this.value < 0) this.value = 0;
+document.addEventListener('DOMContentLoaded', () => {
+    // Setup currency inputs
+    document.querySelectorAll('input[name="so_tien"]').forEach(setupCurrencyInput);
+    
+    // Form validation
+    document.getElementById('create-form')?.addEventListener('submit', e => {
+        if (!validateTransactionForm(e.target)) e.preventDefault();
     });
+    document.getElementById('edit-form')?.addEventListener('submit', e => {
+        if (!validateTransactionForm(e.target)) e.preventDefault();
+    });
+    
+    // Modal controls
+    document.getElementById('open-create-modal')?.addEventListener('click', () => {
+        document.getElementById('create-modal').classList.add('active');
+    });
+    
+    document.querySelectorAll('.modal-overlay').forEach(overlay => {
+        overlay.addEventListener('click', e => {
+            if (e.target === overlay) overlay.classList.remove('active');
+        });
+    });
+    
+    // Close on ESC
+    document.addEventListener('keydown', e => {
+        if (e.key === 'Escape') {
+            document.querySelectorAll('.modal-overlay.active').forEach(m => m.classList.remove('active'));
+        }
+    });
+    
+    // Auto hide alerts
+    setTimeout(() => {
+        document.querySelectorAll('.alert').forEach(alert => {
+            alert.style.opacity = '0';
+            alert.style.transform = 'translateY(-10px)';
+            setTimeout(() => alert.remove(), 300);
+        });
+    }, 5000);
+
+    @if($errors->any() && !$errors->has('id'))
+        document.getElementById('create-modal')?.classList.add('active');
+    @endif
 });
 </script>
 @endsection
