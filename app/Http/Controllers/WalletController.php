@@ -6,6 +6,8 @@ use App\Models\Wallet;
 use App\Models\Category;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use App\Http\Controllers\TransactionController;
 
 class WalletController extends Controller
 {
@@ -266,31 +268,62 @@ class WalletController extends Controller
     // Trạng thái của ngân sách 
     public function toggleStatus(Wallet $wallet)
     {
-        // Kiểm tra quyền sở hữu
         if ($wallet->user_id !== Auth::id()) {
             abort(403, 'Unauthorized action.');
         }
 
-        $newStatus = !$wallet->trang_thai;
+        DB::beginTransaction();
         
-        // Nếu đang kích hoạt, kiểm tra xem danh mục đã có ngân sách active chưa
-        if ($newStatus) {
-            $existingActiveWallet = Wallet::where('user_id', Auth::id())
-                ->where('category_id', $wallet->category_id)
-                ->where('trang_thai', true)
-                ->where('id', '!=', $wallet->id)
-                ->exists();
+        try {
+            $newStatus = !$wallet->trang_thai;
+            
+            if ($newStatus) {
+                // Kiểm tra trùng lặp
+                $existingActiveWallet = Wallet::where('user_id', Auth::id())
+                    ->where('category_id', $wallet->category_id)
+                    ->where('trang_thai', true)
+                    ->where('id', '!=', $wallet->id)
+                    ->exists();
 
-            if ($existingActiveWallet) {
-                return back()->with('error', 'Danh mục này đã có ngân sách đang hoạt động!');
+                if ($existingActiveWallet) {
+                    DB::rollBack();
+                    return back()->with('error', 'Danh mục này đã có ngân sách đang hoạt động!');
+                }
+
+                // Kích hoạt + tính lại số dư 
+                $wallet->update(['trang_thai' => true]);
+                $wallet->recalculateBalance();
+
+                DB::commit();
+
+                return redirect()->route('wallets.index')
+                    ->with('success', "Đã kích hoạt ngân sách '{$wallet->ten_ngan_sach}' và cập nhật số dư thành công!");
+            } else {
+                // Vô hiệu hóa
+                $wallet->update(['trang_thai' => false]);
+
+                DB::commit();
+
+                return redirect()->route('wallets.index')
+                    ->with('success', "Đã vô hiệu hóa ngân sách '{$wallet->ten_ngan_sach}' thành công!");
             }
+            
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return back()->with('error', 'Có lỗi xảy ra. Vui lòng thử lại!');
+        }
+    }
+
+    // Hàm ử lý việc câp nhật số dư thủ công 
+    public function syncBalance(Wallet $wallet)
+    {
+        if ($wallet->user_id !== Auth::id()) {
+            abort(403, 'Unauthorized action.');
         }
 
-        $wallet->update(['trang_thai' => $newStatus]);
+        $newBalance = $wallet->recalculateBalance();
 
-        $status = $newStatus ? 'kích hoạt' : 'vô hiệu hóa';
-        
         return redirect()->route('wallets.index')
-            ->with('success', "Đã {$status} ngân sách '{$wallet->ten_ngan_sach}' thành công!");
+            ->with('success', "Đã đồng bộ số dư ngân sách '{$wallet->ten_ngan_sach}'. Số dư mới: " . number_format($newBalance, 0, ',', '.') . 'đ');
     }
 }

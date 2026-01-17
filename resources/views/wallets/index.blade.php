@@ -438,6 +438,15 @@
         width: 100%;
     }
 
+    .btn-sync {
+        background: #fef3c7; 
+        border: 2px solid #f59e0b;
+    }
+
+    .btn-sync:hover {
+        background: #f59e0b;
+    }
+
     .budget-info {
         display: flex;
         flex-direction: column;
@@ -1171,6 +1180,15 @@
                         </td>
                         <td>
                             <div class="action-buttons">
+                                <!-- Button đồng bộ số dư -->
+                                <form action="{{ route('wallets.sync-balance', $wallet) }}" method="POST" style="display: inline;">
+                                    @csrf
+                                    <button type="submit" class="btn-action btn-sync" title="Đồng bộ số dư" onclick="return confirm('Tính lại số dư dựa trên tất cả giao dịch?')">
+                                        <img src="{{ asset('images/refresh.png') }}" alt="Sync">
+                                    </button>
+                                </form>
+
+                                <!-- Button toggle status -->
                                 <form action="{{ route('wallets.toggle-status', $wallet) }}" method="POST" style="display: inline;">
                                     @csrf
                                     <button type="submit" class="btn-action btn-toggle" title="{{ $wallet->trang_thai ? 'Vô hiệu hóa' : 'Kích hoạt' }}">
@@ -1178,10 +1196,12 @@
                                     </button>
                                 </form>
 
+                                <!-- Button edit -->
                                 <button type="button" class="btn-action btn-edit" onclick="openEditModal({{ $wallet }})" title="Chỉnh sửa">
                                     <img src="{{ asset('images/edit.png') }}" alt="Edit">
                                 </button>
 
+                                <!-- Button delete -->
                                 <form action="{{ route('wallets.destroy', $wallet) }}" method="POST" style="display: inline;" onsubmit="return confirm('Bạn có chắc muốn xóa ngân sách này?')">
                                     @csrf
                                     @method('DELETE')
@@ -1237,7 +1257,6 @@
 
             <form action="{{ route('wallets.store') }}" method="POST" id="create-form">
                 @csrf
-                
                 <div class="modal-body">
                     <!-- Tên ngân sách -->
                     <div class="form-group-compact">

@@ -97,7 +97,7 @@ class DashboardController extends Controller
             ->orderByDesc('ngan_sach_goc')
             ->get();
         
-        // 9. DỮ LIỆU CHO LINE CHART - Thu Chi 6 tháng gần nhất
+        // 9. Dữ liệu cho line chart - Thu Chi 6 tháng gần nhất
         $monthlyData = [];
         for ($i = 5; $i >= 0; $i--) {
             $date = now()->subMonths($i);

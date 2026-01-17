@@ -59,6 +59,7 @@ Route::middleware('auth')->group(function () {
     // Quản lý ngân sách
     Route::resource('wallets', WalletController::class)->parameters(['wallets' => 'wallet']);
     Route::post('/wallets/{wallet}/toggle-status', [WalletController::class, 'toggleStatus'])->name('wallets.toggle-status');
+    Route::post('/wallets/{wallet}/sync-balance', [WalletController::class, 'syncBalance'])->name('wallets.sync-balance');
 
     // Quản lý giao dịch
     Route::resource('transactions', TransactionController::class)->parameters(['transactions' => 'transaction']);

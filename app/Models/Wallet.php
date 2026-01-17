@@ -107,4 +107,25 @@ class Wallet extends Model
     {
         return $query->where('trang_thai', true);
     }
+
+    // Cập nhật số dư tự động 
+    public function recalculateBalance()
+    {
+        $totalSpent = Transaction::where('user_id', $this->user_id)
+            ->where('category_id', $this->category_id)
+            ->where('loai_giao_dich', 'CHI')
+            ->sum('so_tien');
+
+        $totalIncome = Transaction::where('user_id', $this->user_id)
+            ->where('category_id', $this->category_id)
+            ->where('loai_giao_dich', 'THU')
+            ->sum('so_tien');
+
+        // Số dư = Ngân sách gốc + Thu - Chi
+        $newBalance = $this->ngan_sach_goc + $totalIncome - $totalSpent;
+
+        $this->update(['so_du' => $newBalance]);
+
+        return $newBalance;
+    }
 }
