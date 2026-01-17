@@ -7,7 +7,6 @@ use App\Models\Category;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use App\Http\Controllers\TransactionController;
 
 class WalletController extends Controller
 {
@@ -19,12 +18,21 @@ class WalletController extends Controller
 
         // Tìm kiếm theo tên
         if ($request->filled('search')) {
-            $query->where('ten_ngan_sach', 'like', '%' . $request->search . '%');
+            $search = trim($request->search);
+            $searchEscaped = str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $search);
+            $query->where('ten_ngan_sach', 'like', '%' . $searchEscaped . '%');
         }
 
         // Lọc theo danh mục
         if ($request->filled('category_id')) {
-            $query->where('category_id', $request->category_id);
+            // Kiểm tra category phải thuộc user
+            $categoryExists = Category::where('id', $request->category_id)
+                                     ->where('user_id', Auth::id())
+                                     ->exists();
+            
+            if ($categoryExists) {
+                $query->where('category_id', $request->category_id);
+            }
         }
 
         // Lọc theo trạng thái
@@ -36,7 +44,9 @@ class WalletController extends Controller
         $sortBy = $request->get('sort_by', 'created_at');
         $sortOrder = $request->get('sort_order', 'desc');
         
-        $query->orderBy($sortBy, $sortOrder);
+        if (in_array($sortBy, ['ten_ngan_sach', 'ngan_sach_goc', 'so_du', 'created_at'])) {
+            $query->orderBy($sortBy, $sortOrder);
+        }
 
         // Phân trang
         $wallets = $query->paginate(10)->withQueryString();
@@ -62,7 +72,22 @@ class WalletController extends Controller
                 'max:255',
                 'regex:/^[\p{L}\p{N}\s\.,\-\(\)]*$/u',
             ],
-            'category_id' => 'required|exists:categories,id',
+            'category_id' => [
+                'required',
+                'exists:categories,id',
+                function ($attribute, $value, $fail) {
+                    $category = Category::find($value);
+                    if (!$category || $category->user_id !== Auth::id()) {
+                        $fail('Danh mục không hợp lệ!');
+                    }
+                    if ($category->loai_danh_muc !== 'CHI') {
+                        $fail('Chỉ có thể tạo ngân sách cho danh mục CHI!');
+                    }
+                    if (!$category->danh_muc_cha_id) {
+                        $fail('Chỉ có thể chọn danh mục con!');
+                    }
+                }
+            ],
             'ngan_sach_goc' => [
                 'required',
                 'numeric',
@@ -96,44 +121,57 @@ class WalletController extends Controller
         $validated['ngan_sach_goc'] = trim($validated['ngan_sach_goc']);
         $validated['mo_ta'] = $validated['mo_ta'] ? trim($validated['mo_ta']) : null;
 
-        // Kiểm tra category phải là danh mục con CHI
-        $category = Category::where('id', $validated['category_id'])
-            ->where('user_id', Auth::id())
-            ->where('loai_danh_muc', 'CHI')
-            ->whereNotNull('danh_muc_cha_id')
-            ->first();
+        DB::beginTransaction();
+        try {
+            // Kiểm tra category phải là danh mục con CHI
+            $category = Category::where('id', $validated['category_id'])
+                ->where('user_id', Auth::id())
+                ->where('loai_danh_muc', 'CHI')
+                ->whereNotNull('danh_muc_cha_id')
+                ->first();
 
-        if (!$category) {
+            if (!$category) {
+                DB::rollBack();
+                return back()
+                    ->with('error', 'Chỉ có thể tạo ngân sách cho danh mục con loại chi!')
+                    ->withInput();
+            }
+
+            // Kiểm tra xem đã có ngân sách active cho danh mục này chưa
+            $existingWallet = Wallet::where('user_id', Auth::id())
+                ->where('category_id', $validated['category_id'])
+                ->where('trang_thai', true)
+                ->exists();
+
+            if ($existingWallet) {
+                DB::rollBack();
+                return back()
+                    ->with('error', 'Danh mục "' . $category->ten_danh_muc . '" đã có ngân sách đang hoạt động!')
+                    ->withInput();
+            }
+
+            // Tạo ngân sách mới 
+            Wallet::create([
+                'user_id' => Auth::id(),
+                'category_id' => $validated['category_id'],
+                'ten_ngan_sach' => $validated['ten_ngan_sach'],
+                'ngan_sach_goc' => $validated['ngan_sach_goc'],
+                'so_du' => $validated['ngan_sach_goc'], 
+                'mo_ta' => $validated['mo_ta'],
+                'trang_thai' => true,
+            ]);
+
+            DB::commit();
+            
+            return redirect()->route('wallets.index')
+                ->with('success', 'Thêm ngân sách thành công!');
+                
+        } catch (\Exception $e) {
+            DB::rollBack();
             return back()
-                ->with('error', 'Chỉ có thể tạo ngân sách cho danh mục con loại chi!')
+                ->with('error', 'Có lỗi xảy ra: ' . $e->getMessage())
                 ->withInput();
         }
-
-        // Kiểm tra xem đã có ngân sách active cho danh mục này chưa
-        $existingWallet = Wallet::where('user_id', Auth::id())
-            ->where('category_id', $validated['category_id'])
-            ->where('trang_thai', true)
-            ->exists();
-
-        if ($existingWallet) {
-            return back()
-                ->with('error', 'Danh mục "' . $category->ten_danh_muc . '" đã có ngân sách đang hoạt động!')
-                ->withInput();
-        }
-
-        // Tạo ngân sách mới 
-        Wallet::create([
-            'user_id' => Auth::id(),
-            'category_id' => $validated['category_id'],
-            'ten_ngan_sach' => $validated['ten_ngan_sach'],
-            'ngan_sach_goc' => $validated['ngan_sach_goc'],
-            'so_du' => $validated['ngan_sach_goc'], 
-            'mo_ta' => $validated['mo_ta'],
-            'trang_thai' => true,
-        ]);
-
-        return redirect()->route('wallets.index')
-            ->with('success', 'Thêm ngân sách thành công!');
     }
 
     // Cập nhật ngân sách 
@@ -151,7 +189,22 @@ class WalletController extends Controller
                 'max:255',
                 'regex:/^[\p{L}\p{N}\s\.,\-\(\)]*$/u',
             ],
-            'category_id' => 'required|exists:categories,id',
+            'category_id' => [
+                'required',
+                'exists:categories,id',
+                function ($attribute, $value, $fail) {
+                    $category = Category::find($value);
+                    if (!$category || $category->user_id !== Auth::id()) {
+                        $fail('Danh mục không hợp lệ!');
+                    }
+                    if ($category->loai_danh_muc !== 'CHI') {
+                        $fail('Chỉ có thể chọn danh mục CHI!');
+                    }
+                    if (!$category->danh_muc_cha_id) {
+                        $fail('Chỉ có thể chọn danh mục con!');
+                    }
+                }
+            ],
             'ngan_sach_goc' => [
                 'required',
                 'numeric',
@@ -185,64 +238,86 @@ class WalletController extends Controller
         $validated['ngan_sach_goc'] = trim($validated['ngan_sach_goc']);
         $validated['mo_ta'] = $validated['mo_ta'] ? trim($validated['mo_ta']) : null;
 
-        // Kiểm tra category phải là danh mục con CHI
-        $category = Category::where('id', $validated['category_id'])
-            ->where('user_id', Auth::id())
-            ->where('loai_danh_muc', 'CHI')
-            ->whereNotNull('danh_muc_cha_id')
-            ->first();
+        DB::beginTransaction();
+        try {
+            // Kiểm tra category phải là danh mục con CHI
+            $category = Category::where('id', $validated['category_id'])
+                ->where('user_id', Auth::id())
+                ->where('loai_danh_muc', 'CHI')
+                ->whereNotNull('danh_muc_cha_id')
+                ->first();
 
-        if (!$category) {
+            if (!$category) {
+                DB::rollBack();
+                return back()
+                    ->with('error', 'Chỉ có thể cập nhật cho danh mục con loại CHI!')
+                    ->withInput();
+            }
+
+            // Nếu đổi danh mục
+            if ($wallet->category_id != $validated['category_id']) {
+                // Không cho đổi category nếu đã có giao dịch
+                if ($wallet->transactions()->exists()) {
+                    DB::rollBack();
+                    return back()
+                        ->with('error', 'Không thể đổi danh mục cho ngân sách đã có giao dịch!')
+                        ->withInput();
+                }
+                
+                // Kiểm tra xem danh mục mới đã có ngân sách active chưa
+                $existingWallet = Wallet::where('user_id', Auth::id())
+                    ->where('category_id', $validated['category_id'])
+                    ->where('trang_thai', true)
+                    ->where('id', '!=', $wallet->id)
+                    ->exists();
+
+                if ($existingWallet) {
+                    DB::rollBack();
+                    return back()
+                        ->with('error', 'Danh mục "' . $category->ten_danh_muc . '" đã có ngân sách đang hoạt động!')
+                        ->withInput();
+                }
+
+                // Reset số dư khi đổi danh mục (vì chưa có giao dịch)
+                $wallet->update([
+                    'ten_ngan_sach' => $validated['ten_ngan_sach'],
+                    'category_id' => $validated['category_id'],
+                    'ngan_sach_goc' => $validated['ngan_sach_goc'],
+                    'so_du' => $validated['ngan_sach_goc'], 
+                    'mo_ta' => $validated['mo_ta'],
+                ]);
+            } else {
+                // Giữ nguyên danh mục - tính lại số dư
+                $spentAmount = $wallet->spent_amount;
+                $newBalance = $validated['ngan_sach_goc'] - $spentAmount;
+
+                // Kiểm tra hạn mức mới phải >= số đã chi
+                if ($newBalance < 0) {
+                    DB::rollBack();
+                    return back()
+                        ->with('error', 'Hạn mức mới phải lớn hơn hoặc bằng số tiền đã chi (' . number_format($spentAmount, 0, ',', '.') . 'đ)!')
+                        ->withInput();
+                }
+
+                $wallet->update([
+                    'ten_ngan_sach' => $validated['ten_ngan_sach'],
+                    'ngan_sach_goc' => $validated['ngan_sach_goc'],
+                    'so_du' => $newBalance,
+                    'mo_ta' => $validated['mo_ta'],
+                ]);
+            }
+
+            DB::commit();
+            
+            return redirect()->route('wallets.index')
+                ->with('success', 'Cập nhật ngân sách thành công!');
+                
+        } catch (\Exception $e) {
+            DB::rollBack();
             return back()
-                ->with('error', 'Chỉ có thể cập nhật cho danh mục con loại CHI!')
+                ->with('error', 'Có lỗi xảy ra: ' . $e->getMessage())
                 ->withInput();
         }
-
-        // Nếu đổi danh mục
-        if ($wallet->category_id != $validated['category_id']) {
-            // Kiểm tra xem danh mục mới đã có ngân sách active chưa
-            $existingWallet = Wallet::where('user_id', Auth::id())
-                ->where('category_id', $validated['category_id'])
-                ->where('trang_thai', true)
-                ->where('id', '!=', $wallet->id)
-                ->exists();
-
-            if ($existingWallet) {
-                return back()
-                    ->with('error', 'Danh mục "' . $category->ten_danh_muc . '" đã có ngân sách đang hoạt động!')
-                    ->withInput();
-            }
-
-            // Reset số dư khi đổi danh mục
-            $wallet->update([
-                'ten_ngan_sach' => $validated['ten_ngan_sach'],
-                'category_id' => $validated['category_id'],
-                'ngan_sach_goc' => $validated['ngan_sach_goc'],
-                'so_du' => $validated['ngan_sach_goc'], 
-                'mo_ta' => $validated['mo_ta'],
-            ]);
-        } else {
-            // Giữ nguyên danh mục - tính lại số dư
-            $spentAmount = $wallet->spent_amount;
-            $newBalance = $validated['ngan_sach_goc'] - $spentAmount;
-
-            // Kiểm tra hạn mức mới phải >= số đã chi
-            if ($newBalance < 0) {
-                return back()
-                    ->with('error', 'Hạn mức mới phải lớn hơn hoặc bằng số tiền đã chi (' . number_format($spentAmount, 0, ',', '.') . 'đ)!')
-                    ->withInput();
-            }
-
-            $wallet->update([
-                'ten_ngan_sach' => $validated['ten_ngan_sach'],
-                'ngan_sach_goc' => $validated['ngan_sach_goc'],
-                'so_du' => $newBalance,
-                'mo_ta' => $validated['mo_ta'],
-            ]);
-        }
-
-        return redirect()->route('wallets.index')
-            ->with('success', 'Cập nhật ngân sách thành công!');
     }
 
     // Xóa ngân sách 
@@ -253,16 +328,25 @@ class WalletController extends Controller
             abort(403, 'Unauthorized action.');
         }
 
-        // Kiểm tra xem có giao dịch liên quan không 
-        if ($wallet->transactions()->exists()) {
-            return back()->with('error', 'Không thể xóa ngân sách đã có giao dịch!');
+        DB::beginTransaction();
+        try {
+            if (!$wallet->canDelete()) {
+                DB::rollBack();
+                return back()->with('error', 'Không thể xóa ngân sách đã có giao dịch!');
+            }
+
+            $walletName = $wallet->ten_ngan_sach;
+            $wallet->delete();
+
+            DB::commit();
+            
+            return redirect()->route('wallets.index')
+                ->with('success', "Xóa ngân sách '{$walletName}' thành công!");
+                
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return back()->with('error', 'Có lỗi xảy ra: ' . $e->getMessage());
         }
-
-        $walletName = $wallet->ten_ngan_sach;
-        $wallet->delete();
-
-        return redirect()->route('wallets.index')
-            ->with('success', "Xóa ngân sách '{$walletName}' thành công!");
     }
 
     // Trạng thái của ngân sách 
@@ -292,12 +376,12 @@ class WalletController extends Controller
 
                 // Kích hoạt + tính lại số dư 
                 $wallet->update(['trang_thai' => true]);
-                $wallet->recalculateBalance();
+                $newBalance = $wallet->recalculateBalance();
 
                 DB::commit();
 
                 return redirect()->route('wallets.index')
-                    ->with('success', "Đã kích hoạt ngân sách '{$wallet->ten_ngan_sach}' và cập nhật số dư thành công!");
+                    ->with('success', "Đã kích hoạt ngân sách '{$wallet->ten_ngan_sach}' và cập nhật số dư: " . number_format($newBalance, 0, ',', '.') . 'đ');
             } else {
                 // Vô hiệu hóa
                 $wallet->update(['trang_thai' => false]);
@@ -310,20 +394,29 @@ class WalletController extends Controller
             
         } catch (\Exception $e) {
             DB::rollBack();
-            return back()->with('error', 'Có lỗi xảy ra. Vui lòng thử lại!');
+            return back()->with('error', 'Có lỗi xảy ra: ' . $e->getMessage());
         }
     }
 
-    // Hàm ử lý việc câp nhật số dư thủ công 
+    // Đồng bộ số dư thủ công 
     public function syncBalance(Wallet $wallet)
     {
         if ($wallet->user_id !== Auth::id()) {
             abort(403, 'Unauthorized action.');
         }
 
-        $newBalance = $wallet->recalculateBalance();
-
-        return redirect()->route('wallets.index')
-            ->with('success', "Đã đồng bộ số dư ngân sách '{$wallet->ten_ngan_sach}'. Số dư mới: " . number_format($newBalance, 0, ',', '.') . 'đ');
+        DB::beginTransaction();
+        try {
+            $newBalance = $wallet->recalculateBalance();
+            
+            DB::commit();
+            
+            return redirect()->route('wallets.index')
+                ->with('success', "Đã đồng bộ số dư ngân sách '{$wallet->ten_ngan_sach}'. Số dư mới: " . number_format($newBalance, 0, ',', '.') . 'đ');
+                
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return back()->with('error', 'Có lỗi xảy ra: ' . $e->getMessage());
+        }
     }
 }

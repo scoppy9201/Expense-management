@@ -8,6 +8,7 @@ use App\Models\Wallet;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 
 class TransactionController extends Controller
 {
@@ -20,16 +21,23 @@ class TransactionController extends Controller
 
         // Tìm kiếm đa trường
         if ($request->filled('search')) {
-            $search = $request->search; 
-            $query->where(function($q) use ($search){
-                // Tìm kiếm theo ghi chú
-                $q->where('ghi_chu', 'like', '%' . $search . '%')
-                // Tìm kiếm theo tên danh mục 
-                    ->orWhereHas('category', function($categoryQuery) use ($search) {
-                        $categoryQuery->where('ten_danh_muc', 'like', '%' . $search . '%');
-                    })
-                    // Tìm kiếm theo số tiền 
-                    ->orWhere('so_tien', 'like', '%' . str_replace(',', '', $search) . '%');
+            $search = trim($request->search);
+            
+            // Escape các ký tự đặc biệt trong LIKE
+            $searchEscaped = str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $search);
+            
+            $query->where(function($q) use ($searchEscaped, $userId) {
+                $q->where('ghi_chu', 'like', '%' . $searchEscaped . '%');
+                
+                // Tìm theo số tiền chỉ khi là số
+                if (is_numeric(str_replace(',', '', $searchEscaped))) {
+                    $q->orWhere('so_tien', 'like', '%' . str_replace(',', '', $searchEscaped) . '%');
+                }
+                
+                $q->orWhereHas('category', function($categoryQuery) use ($searchEscaped, $userId) {
+                    $categoryQuery->where('ten_danh_muc', 'like', '%' . $searchEscaped . '%')
+                                ->where('user_id', $userId);
+                });
             });
         }
 
@@ -58,50 +66,38 @@ class TransactionController extends Controller
         }
 
         // Sắp xếp + phân trang
-        $transactions = $query->orderBy('ngay_giao_dich', 'desc')
-                             ->orderBy('created_at', 'desc')
-                             ->paginate(10)
-                             ->withQueryString();
+        $transactions = $query->orderBy('ngay_giao_dich', 'desc')->orderBy('created_at', 'desc')->paginate(10)->withQueryString();
 
         // Lấy danh mục con (có danh_muc_cha_id)
-        $categories = Category::where('user_id', $userId)
-                             ->where('trang_thai', true)
-                             ->whereNotNull('danh_muc_cha_id')
-                             ->orderBy('loai_danh_muc')
-                             ->orderBy('ten_danh_muc')
-                             ->get();
+        $categories = Category::where('user_id', $userId)->where('trang_thai', true)->whereNotNull('danh_muc_cha_id')->orderBy('loai_danh_muc')->orderBy('ten_danh_muc')->get();
 
         // Lấy wallets
-        $wallets = Wallet::where('user_id', $userId)
-                        ->where('trang_thai', true)
-                        ->with('category')
-                        ->orderBy('category_id')
-                        ->orderBy('ten_ngan_sach')
-                        ->get();
+        $wallets = Wallet::where('user_id', $userId)->where('trang_thai', true)->with('category')->orderBy('category_id')->orderBy('ten_ngan_sach')->get();
                         
         // Thống kê tổng thu / chi 
-        $totalIncome = Transaction::where('user_id', $userId)
-                                 ->where('loai_giao_dich', 'THU')
-                                 ->sum('so_tien');
+        $totalIncome = Transaction::where('user_id', $userId)->where('loai_giao_dich', 'THU')->sum('so_tien');
+        $totalExpense = Transaction::where('user_id', $userId)->where('loai_giao_dich', 'CHI')->sum('so_tien');
 
-        $totalExpense = Transaction::where('user_id', $userId)
-                                  ->where('loai_giao_dich', 'CHI')
-                                  ->sum('so_tien');
-
-        return view('transactions.index', compact(
-            'transactions',
-            'categories',
-            'wallets',
-            'totalIncome',
-            'totalExpense'
-        ));
+        return view('transactions.index', compact('transactions','categories','wallets','totalIncome','totalExpense'));
     }
 
     // Thêm giao dịch mới 
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'category_id' => 'required|exists:categories,id',
+            'category_id' => [
+                'required',
+                'exists:categories,id',
+                function ($attribute, $value, $fail) {
+                    $category = Category::find($value);
+                    if (!$category || $category->user_id !== Auth::id()) {
+                        $fail('Danh mục không hợp lệ!');
+                    }
+                    if (!$category->danh_muc_cha_id) {
+                        $fail('Chỉ có thể chọn danh mục con!');
+                    }
+                }
+            ],
             'loai_giao_dich' => 'required|in:THU,CHI',
             'phuong_thuc_thanh_toan' => 'required|in:Tiền mặt,Chuyển khoản',
             'so_tien' => [
@@ -168,6 +164,7 @@ class TransactionController extends Controller
             $wallet = Wallet::where('category_id', $validated['category_id'])
                            ->where('user_id', Auth::id())
                            ->where('trang_thai', true)
+                           ->lockForUpdate()
                            ->first();
 
             // Nếu là CHI và có ngân sách, kiểm tra số dư
@@ -222,7 +219,19 @@ class TransactionController extends Controller
         }
 
         $validated = $request->validate([
-            'category_id' => 'required|exists:categories,id',
+            'category_id' => [
+                'required',
+                'exists:categories,id',
+                function ($attribute, $value, $fail) {
+                    $category = Category::find($value);
+                    if (!$category || $category->user_id !== Auth::id()) {
+                        $fail('Danh mục không hợp lệ!');
+                    }
+                    if (!$category->danh_muc_cha_id) {
+                        $fail('Chỉ có thể chọn danh mục con!');
+                    }
+                }
+            ],
             'loai_giao_dich' => 'required|in:THU,CHI',
             'phuong_thuc_thanh_toan' => 'required|in:Tiền mặt,Chuyển khoản',
             'so_tien' => [
@@ -294,12 +303,14 @@ class TransactionController extends Controller
             $oldWallet = Wallet::where('category_id', $oldCategoryId)
                               ->where('user_id', Auth::id())
                               ->where('trang_thai', true)
+                              ->lockForUpdate()
                               ->first();
 
             // Lấy ngân sách mới (nếu có)
             $newWallet = Wallet::where('category_id', $validated['category_id'])
                               ->where('user_id', Auth::id())
                               ->where('trang_thai', true)
+                              ->lockForUpdate()
                               ->first();
 
             // Trường hợp 1: Cùng danh mục
@@ -311,6 +322,9 @@ class TransactionController extends Controller
                     } else {
                         $oldWallet->increment('so_du', $oldAmount);
                     }
+
+                    // Refresh để lấy giá trị mới nhất
+                    $oldWallet->refresh();
 
                     // Kiểm tra số dư trước khi trừ (nếu là CHI)
                     if ($validated['loai_giao_dich'] == 'CHI') {
@@ -335,6 +349,13 @@ class TransactionController extends Controller
                 // Hoàn trả ngân sách cũ (nếu có)
                 if ($oldWallet) {
                     if ($oldType == 'THU') {
+                        // Kiểm tra trước khi trừ
+                        if ($oldWallet->so_du < $oldAmount) {
+                            DB::rollBack();
+                            return back()
+                                ->with('error', 'Không thể cập nhật vì sẽ làm số dư ngân sách cũ âm!')
+                                ->withInput();
+                        }
                         $oldWallet->decrement('so_du', $oldAmount);
                     } else {
                         $oldWallet->increment('so_du', $oldAmount);
@@ -397,12 +418,21 @@ class TransactionController extends Controller
         try {
             // Hoàn trả số dư ngân sách (nếu có)
             $wallet = Wallet::where('category_id', $transaction->category_id)
-                           ->where('user_id', Auth::id())
-                           ->where('trang_thai', true)
-                           ->first();
+                        ->where('user_id', Auth::id())
+                        ->where('trang_thai', true)
+                        ->lockForUpdate()
+                        ->first();
 
             if ($wallet) {
                 if ($transaction->loai_giao_dich == 'THU') {
+                    // Kiểm tra trước khi trừ 
+                    if ($wallet->so_du < $transaction->so_tien) {
+                        DB::rollBack();
+                        return back()->with('error', 
+                            'Không thể xóa giao dịch này vì sẽ làm số dư âm! ' .
+                            'Số dư hiện tại: ' . number_format($wallet->so_du, 0, ',', '.') . 'đ'
+                        );
+                    }
                     $wallet->decrement('so_du', $transaction->so_tien);
                 } else {
                     $wallet->increment('so_du', $transaction->so_tien);
