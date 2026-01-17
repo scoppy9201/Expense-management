@@ -87,10 +87,21 @@ class Category extends Model
      */
     public function scopeSearch($query, $keyword)
     {
-        if ($keyword) {
-            return $query->where('ten_danh_muc', 'like', '%' . $keyword . '%');
+        if (empty($keyword)) {
+            return $query;
         }
-        return $query;
+        
+        $keyword = trim($keyword);
+        
+        return $query->where(function ($q) use ($keyword) {
+            // Tìm theo tên
+            $q->where('ten_danh_muc', 'like', "%{$keyword}%");
+            
+            // Nếu là số, tìm thêm theo ID
+            if (is_numeric($keyword) && $keyword > 0) {
+                $q->orWhere('id', '=', intval($keyword));
+            }
+        });
     }
 
     /**

@@ -2246,30 +2246,18 @@ setTimeout(() => {
 }, 5000);
 
 const searchInput = document.querySelector('input[name="search"]');
-const tableRows = document.querySelectorAll('tbody tr');
+const searchForm = searchInput?.closest('form'); // Lấy form chứa input
+let searchTimeout;
 
-if (searchInput && tableRows.length > 0) {
+if (searchInput && searchForm) {
     searchInput.addEventListener('input', function() {
         clearTimeout(searchTimeout);
-        const searchValue = this.value.toLowerCase().trim();
+        const searchValue = this.value.trim();
         
         searchTimeout = setTimeout(() => {
-            let visibleCount = 0;
-            
-            tableRows.forEach(row => {
-                const text = [
-                    row.querySelector('.category-name strong')?.textContent || '',
-                    row.querySelectorAll('td')[3]?.textContent || '',
-                    row.querySelectorAll('td')[4]?.textContent || ''
-                ].join(' ').toLowerCase();
-                
-                const isVisible = text.includes(searchValue);
-                row.style.display = isVisible ? '' : 'none';
-                if (isVisible) visibleCount++;
-            });
-            
-            showNoResultMessage(visibleCount);
-        }, 300);
+            // Submit form để search trong database
+            searchForm.submit();
+        }, 500); 
     });
 }
 
