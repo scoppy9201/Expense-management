@@ -116,7 +116,7 @@
         }
 
         /* Topbar */
-        .topbar {
+.topbar {
             position: fixed;
             top: 0;
             left: 0;
@@ -229,7 +229,7 @@
         .icon-btn {
             width: 42px;
             height: 42px;
-            border-radius: 12px;
+border-radius: 12px;
             background: #f8f9fd;
             display: flex;
             align-items: center;
@@ -341,7 +341,7 @@
             overflow: hidden;
             z-index: 10000;
             opacity: 0;
-            visibility: hidden;
+visibility: hidden;
             transform: translateY(-10px);
             transition: var(--transition);
             border: 1px solid rgba(0, 0, 0, 0.05);
@@ -454,7 +454,7 @@
             width: 80px;
             background: rgba(255, 255, 255, 0.95);
             backdrop-filter: blur(20px);
-            z-index: 100;
+z-index: 100;
             box-shadow: 2px 0 20px rgba(0, 0, 0, 0.08);
             border-right: 1px solid rgba(226, 232, 240, 0.8);
             transition: var(--transition);
@@ -563,7 +563,7 @@
         }
 
         .nav-link.active .nav-text::before {
-            border-color: transparent var(--primary) transparent transparent;
+border-color: transparent var(--primary) transparent transparent;
         }
 
         /* Main Content */
@@ -674,7 +674,7 @@
         }
 
         .stat-card::before {
-            content: '';
+content: '';
             position: absolute;
             top: 0;
             left: 0;
@@ -898,13 +898,13 @@
                 </a>
             </li>     
             <li class="nav-item">
-                <a href="#" class="nav-link">
-                    <span class="nav-icon">
-                        <img src="/images/settings.png" alt="Settings">
+            <a href="{{ route('ai-assistant.index') }}" class="nav-link {{ request()->routeIs('ai-assistant.*') ? 'active' : '' }}">
+                <span class="nav-icon">
+                    <img src="/images/AI assistant.png" alt="AI Assistant">
                     </span>
-                    <span class="nav-text">Cài đặt</span>
-                </a>
-            </li>
+                    <span class="nav-text">Trợ lý AI</span>
+            </a>
+        </li>
         </ul>
     </aside>
 
@@ -933,6 +933,7 @@
         
         document.addEventListener('click', () => dropdown.classList.remove('show'));
         dropdown?.addEventListener('click', e => e.stopPropagation());
+
     </script>
 </body>
 </html>

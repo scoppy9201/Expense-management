@@ -10,6 +10,7 @@ use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\TransactionController;
 use App\Http\Controllers\WalletController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\AIAssistantController;
 
 // Trang chủ (chưa đăng nhập)
 Route::get('/', function () {
@@ -66,6 +67,16 @@ Route::middleware('auth')->group(function () {
 
     // Logout
     Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
+});
+
+// AI Assistant Routes
+Route::prefix('ai-assistant')->middleware('auth')->group(function () {
+    Route::get('/', [AIAssistantController::class, 'index'])->name('ai-assistant.index');
+    Route::post('/chat', [AIAssistantController::class, 'chat'])->name('ai-assistant.chat');
+    Route::post('/analyze', [AIAssistantController::class, 'analyze'])->name('ai-assistant.analyze');
+    Route::post('/ai/clear', [AIAssistantController::class, 'clearHistory'])->name('ai.clear');
+    Route::get('/suggestions', [AIAssistantController::class, 'suggestions'])->name('ai-assistant.suggestions');
+    Route::get('/insights', [AIAssistantController::class, 'insights'])->name('ai-assistant.insights');
 });
 
 Route::redirect('/home', '/dashboard')->middleware('auth');
